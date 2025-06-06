@@ -1,0 +1,27 @@
+RewriteEngine On
+
+# Handle front controller pattern
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# Protect sensitive directories
+<IfModule mod_alias.c>
+    RedirectMatch 403 ^/app/?$
+    RedirectMatch 403 ^/config/?$
+    RedirectMatch 403 ^/vendor/?$
+    RedirectMatch 403 ^/views/?$
+    RedirectMatch 403 ^/helper/?$
+</IfModule>
+
+# Protect dot files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# PHP settings
+<IfModule mod_php8.c>
+    php_flag display_errors On
+    php_value error_reporting E_ALL
+</IfModule> 
