@@ -8,7 +8,7 @@
                     <h4 class="mb-0">Register</h4>
                 </div>
                 <div class="card-body">
-                    <form action="/register" method="POST" class="needs-validation" novalidate>
+                    <form action="<?= getBaseUrl() ?>/register" method="POST" class="needs-validation" novalidate>
                         <?php echo csrf_field(); ?>
 
                         <div class="row mb-3">
@@ -73,7 +73,7 @@
                     </form>
 
                     <div class="text-center mt-3">
-                        <p>Already have an account? <a href="/login" class="text-primary">Login here</a></p>
+                        <p>Already have an account? <a href="<?= getBaseUrl() ?>/login" style="color: var(--bs-primary); text-decoration: none; transition: all 0.3s ease;" onmouseover="this.style.color='var(--bs-link-hover-color)'" onmouseout="this.style.color='var(--bs-primary)'">Login here</a></p>
                     </div>
                 </div>
             </div>

@@ -6,7 +6,7 @@
             <div class="card">
                 <div class="card-header">Login</div>
                 <div class="card-body">
-                    <form method="POST" action="/login">
+                    <form method="POST" action="<?= getBaseUrl() ?>/login">
                         <?php echo csrf_field(); ?>
                         
                         <div class="form-group mb-3">
@@ -34,7 +34,7 @@
                     </form>
 
                     <div class="text-center mt-3">
-                        <p>Don't have an account? <a href="/register">Register here</a></p>
+                        <p>Don't have an account? <a href="<?= getBaseUrl() ?>/register" style="color: var(--bs-primary); text-decoration: none; transition: all 0.3s ease;" onmouseover="this.style.color='var(--bs-link-hover-color)'" onmouseout="this.style.color='var(--bs-primary)'">Register here</a></p>
                     </div>
                 </div>
             </div>
