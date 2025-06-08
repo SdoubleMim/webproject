@@ -65,4 +65,18 @@ class User
         $stmt = $db->prepare($sql);
         return $stmt->execute(['id' => $id]);
     }
+
+    public static function findByStudentId(string $studentId)
+    {
+        $db = self::getDB();
+        $sql = "SELECT u.* FROM users u 
+                JOIN students s ON s.user_id = u.id 
+                WHERE s.student_id = :student_id 
+                LIMIT 1";
+        
+        $stmt = $db->prepare($sql);
+        $stmt->execute(['student_id' => $studentId]);
+        
+        return $stmt->fetch();
+    }
 } 

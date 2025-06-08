@@ -75,16 +75,6 @@ abstract class Controller
         }
     }
 
-    protected function requireTeacher()
-    {
-        $this->requireAuth();
-        if (!isTeacher() && !isAdmin()) {
-            $this->setFlash('Access denied', 'danger');
-            $this->redirect('/');
-            exit();
-        }
-    }
-
     protected function requireStudent()
     {
         $this->requireAuth();

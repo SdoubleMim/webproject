@@ -1,7 +1,5 @@
 <?php
 
-require_once __DIR__ . '/vendor/autoload.php';
-
 try {
     $db = new PDO(
         "mysql:host=localhost;dbname=webproject_database;charset=utf8mb4",

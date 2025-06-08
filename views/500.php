@@ -1,67 +1,57 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>500 - Server Error</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --dark-bg: #1a1a1a;
-            --dark-text: #ffffff;
-            --dark-secondary: #333333;
-            --accent-color: #8b5cf6;
-        }
+<?php require_once __DIR__ . '/partials/header.php'; ?>
 
-        body {
-            background-color: var(--dark-bg);
-            color: var(--dark-text);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .error-container {
-            text-align: center;
-            padding: 2rem;
-        }
-
-        .error-code {
-            font-size: 8rem;
-            font-weight: bold;
-            color: var(--accent-color);
-            margin-bottom: 1rem;
-            line-height: 1;
-        }
-
-        .error-message {
-            font-size: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .btn-primary {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
-        .btn-primary:hover {
-            background-color: #7c4ef3;
-            border-color: #7c4ef3;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="error-container">
-            <div class="error-code">500</div>
-            <h1 class="error-message">Server Error</h1>
-            <p class="lead mb-4">Something went wrong on our end. We're working to fix it as soon as possible.</p>
-            <a href="<?= getBaseUrl() ?>" class="btn btn-primary btn-lg">Go to Homepage</a>
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 text-center">
+            <div class="error-page">
+                <h1 class="display-1 text-primary mb-4">500</h1>
+                <h2 class="mb-4">Internal Server Error</h2>
+                <p class="lead mb-5">Oops! Something went wrong on our end. Our team has been notified and is working to fix the issue.</p>
+                <?php if (isset($message) && !empty($message)): ?>
+                    <div class="alert alert-danger mb-4">
+                        <pre class="mb-0"><code><?= e($message) ?></code></pre>
+                    </div>
+                <?php endif; ?>
+                <div class="d-grid gap-2 col-md-6 mx-auto">
+                    <a href="<?= getBaseUrl() ?>" class="btn btn-primary">
+                        <i class="bi bi-house-door me-2"></i>Back to Home
+                    </a>
+                    <button onclick="window.history.back()" class="btn btn-outline-primary">
+                        <i class="bi bi-arrow-left me-2"></i>Go Back
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
+</div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html> 
+<style>
+.error-page {
+    padding: 40px;
+    background: linear-gradient(145deg, #1f1f1f, #2d1b4d);
+    border-radius: 15px;
+    border: 1px solid rgba(157, 78, 221, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.error-page h1 {
+    font-size: 120px;
+    font-weight: bold;
+    text-shadow: 2px 2px 10px rgba(157, 78, 221, 0.5);
+}
+
+.error-page h2 {
+    color: var(--bs-primary);
+}
+
+.error-page pre {
+    background: rgba(31, 31, 31, 0.8);
+    border-radius: 5px;
+    padding: 15px;
+    color: #ff6b6b;
+    max-height: 200px;
+    overflow-y: auto;
+}
+</style>
+
+<?php require_once __DIR__ . '/partials/footer.php'; ?> 

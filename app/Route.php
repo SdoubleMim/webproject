@@ -5,21 +5,41 @@ namespace App;
 class Route
 {
     private static $routes = [];
-    private static $baseUrl = '/webproject';
+    private static $baseUrl;
+    private static $middlewares = [];
 
-    public static function get($path, $callback)
+    public static function init()
     {
-        self::$routes['GET'][$path] = $callback;
+        // Get base URL from environment variable or calculate it
+        self::$baseUrl = '/webproject';
+        self::$baseUrl = rtrim(self::$baseUrl, '/');
     }
 
-    public static function post($path, $callback)
+    public static function get($path, $callback, $middleware = null)
     {
-        self::$routes['POST'][$path] = $callback;
+        $path = trim($path, '/');
+        self::$routes['GET'][$path] = [
+            'callback' => $callback,
+            'middleware' => $middleware
+        ];
+    }
+
+    public static function post($path, $callback, $middleware = null)
+    {
+        $path = trim($path, '/');
+        self::$routes['POST'][$path] = [
+            'callback' => $callback,
+            'middleware' => $middleware
+        ];
     }
 
     public static function run()
     {
         try {
+            // Initialize the router
+            self::init();
+
+            // Get the request URI and method
             $uri = parse_url($_SERVER['REQUEST_URI'])['path'];
             $method = $_SERVER['REQUEST_METHOD'];
             
@@ -28,13 +48,20 @@ class Route
                 $uri = substr($uri, strlen(self::$baseUrl));
             }
             
-            // If URI is empty or just '/', set it to 'home'
-            $uri = $uri ?: 'home';
+            // Clean up the URI
             $uri = trim($uri, '/');
+            $uri = $uri ?: 'home'; // If URI is empty, set it to 'home'
 
             // Check for exact route match
             if (isset(self::$routes[$method][$uri])) {
-                $callback = self::$routes[$method][$uri];
+                $route = self::$routes[$method][$uri];
+                
+                // Run middleware if exists
+                if ($route['middleware']) {
+                    self::runMiddleware($route['middleware']);
+                }
+                
+                $callback = $route['callback'];
                 if (is_array($callback)) {
                     $controller = new $callback[0]();
                     $action = $callback[1];
@@ -44,24 +71,34 @@ class Route
             }
 
             // Check for dynamic routes with parameters
-            foreach (self::$routes[$method] ?? [] as $route => $callback) {
-                $pattern = "@^" . preg_replace('/\:([a-zA-Z0-9\_\-]+)/', '(?P<\1>[a-zA-Z0-9\-\_]+)', preg_quote($route)) . "$@D";
+            foreach (self::$routes[$method] ?? [] as $routePath => $config) {
+                // Convert route parameters to regex pattern
+                $pattern = preg_replace('/:[a-zA-Z0-9_-]+/', '([^/]+)', $routePath);
+                $pattern = '#^' . $pattern . '$#';
                 
                 if (preg_match($pattern, $uri, $matches)) {
-                    // Remove the full match from the matches array
+                    // Remove the full match
                     array_shift($matches);
                     
-                    // Extract named parameters
-                    $params = array_filter($matches, function($key) {
-                        return !is_numeric($key);
-                    }, ARRAY_FILTER_USE_KEY);
+                    // Get parameter names from the route
+                    preg_match_all('/:([a-zA-Z0-9_-]+)/', $routePath, $paramNames);
+                    $paramNames = $paramNames[1];
                     
+                    // Create associative array of parameters
+                    $params = array_combine($paramNames, $matches);
+                    
+                    // Run middleware if exists
+                    if ($config['middleware']) {
+                        self::runMiddleware($config['middleware']);
+                    }
+                    
+                    $callback = $config['callback'];
                     if (is_array($callback)) {
                         $controller = new $callback[0]();
                         $action = $callback[1];
-                        return call_user_func_array([$controller, $action], array_values($params));
+                        return call_user_func_array([$controller, $action], $params);
                     }
-                    return call_user_func_array($callback, array_values($params));
+                    return call_user_func_array($callback, $params);
                 }
             }
 
@@ -71,43 +108,68 @@ class Route
             // Log the error
             error_log($e->getMessage());
             
-            // Show error page
-            self::serverError();
+            // Show error page with message in development
+            self::serverError(APP_ENV === 'development' ? $e->getMessage() : null);
+        }
+    }
+
+    private static function runMiddleware($middleware)
+    {
+        if (is_array($middleware)) {
+            foreach ($middleware as $m) {
+                self::executeMiddleware($m);
+            }
+        } else {
+            self::executeMiddleware($middleware);
+        }
+    }
+
+    private static function executeMiddleware($middleware)
+    {
+        switch ($middleware) {
+            case 'auth':
+                if (!auth()) {
+                    setFlash('Please login to continue', 'warning');
+                    redirect('/login');
+                }
+                break;
+            case 'guest':
+                if (auth()) {
+                    redirect('/dashboard');
+                }
+                break;
+            case 'admin':
+                if (!isAdmin()) {
+                    setFlash('Unauthorized access', 'danger');
+                    redirect('/dashboard');
+                }
+                break;
+            case 'csrf':
+                if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+                    if (!isset($_POST['csrf_token']) || !validateCsrfToken($_POST['csrf_token'])) {
+                        setFlash('Invalid CSRF token', 'danger');
+                        redirect('/');
+                    }
+                }
+                break;
         }
     }
 
     private static function notFound()
     {
-        header("HTTP/1.0 404 Not Found");
+        if (!headers_sent()) {
+            header("HTTP/1.0 404 Not Found");
+        }
         require_once __DIR__ . '/../views/404.php';
         exit();
     }
 
-    private static function serverError()
+    private static function serverError($message = null)
     {
-        header("HTTP/1.1 500 Internal Server Error");
+        if (!headers_sent()) {
+            header("HTTP/1.1 500 Internal Server Error");
+        }
         require_once __DIR__ . '/../views/500.php';
         exit();
     }
-}
-
-// Front Controller routes
-Route::get('', [Controller\FrontController::class, 'home']);
-Route::get('home', [Controller\FrontController::class, 'home']);
-
-// Auth routes
-Route::get('login', [Controller\AuthController::class, 'loginForm']);
-Route::post('login', [Controller\AuthController::class, 'login']);
-Route::get('register', [Controller\AuthController::class, 'registerForm']);
-Route::post('register', [Controller\AuthController::class, 'register']);
-Route::get('logout', [Controller\AuthController::class, 'logout']);
-
-// Course routes
-Route::get('courses', [Controller\CourseController::class, 'index']);
-Route::get('courses/create', [Controller\CourseController::class, 'create']);
-Route::post('courses/create', [Controller\CourseController::class, 'store']);
-Route::get('courses/show/:id', [Controller\CourseController::class, 'show']);
-Route::get('courses/edit/:id', [Controller\CourseController::class, 'edit']);
-Route::post('courses/edit/:id', [Controller\CourseController::class, 'update']);
-Route::post('courses/delete/:id', [Controller\CourseController::class, 'delete']);
-Route::post('courses/enroll/:id', [Controller\CourseController::class, 'enroll']); 
+} 

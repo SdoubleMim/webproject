@@ -20,43 +20,66 @@ try {
     $_ENV['APP_ENV'] = 'development';
 }
 
-// Define database constants
+// Define constants
 define('DB_HOST', $_ENV['DB_HOST']);
 define('DB_NAME', $_ENV['DB_NAME']);
 define('DB_USER', $_ENV['DB_USER']);
 define('DB_PASS', $_ENV['DB_PASS']);
+define('APP_URL', $_ENV['APP_URL']);
+define('APP_ENV', $_ENV['APP_ENV']);
 
 // Start session
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Set error handler
+set_error_handler(function($errno, $errstr, $errfile, $errline) {
+    if (!(error_reporting() & $errno)) {
+        return false;
+    }
+    
+    $error = [
+        'type' => $errno,
+        'message' => $errstr,
+        'file' => $errfile,
+        'line' => $errline
+    ];
+    
+    if (APP_ENV === 'development') {
+        throw new ErrorException($errstr, 0, $errno, $errfile, $errline);
+    } else {
+        error_log(json_encode($error));
+        require_once __DIR__ . '/views/500.php';
+        exit(1);
+    }
+});
+
+// Set exception handler
+set_exception_handler(function($e) {
+    $error = [
+        'type' => get_class($e),
+        'message' => $e->getMessage(),
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'trace' => $e->getTraceAsString()
+    ];
+    
+    if (APP_ENV === 'development') {
+        throw $e;
+    } else {
+        error_log(json_encode($error));
+        require_once __DIR__ . '/views/500.php';
+        exit(1);
+    }
+});
 
 // Helper functions
 require_once __DIR__ . '/helper/functions.php';
+require_once __DIR__ . '/helper/auth.php';
 
-use App\Route;
-use App\Controller\AuthController;
-use App\Controller\FrontController;
-use App\Controller\CourseController;
-
-// Home routes
-Route::get('', [FrontController::class, 'home']);
-Route::get('home', [FrontController::class, 'home']);
-
-// Auth routes
-Route::get('login', [AuthController::class, 'loginForm']);
-Route::post('login', [AuthController::class, 'login']);
-Route::get('register', [AuthController::class, 'registerForm']);
-Route::post('register', [AuthController::class, 'register']);
-Route::get('logout', [AuthController::class, 'logout']);
-
-// Course routes
-Route::get('courses', [CourseController::class, 'index']);
-Route::get('courses/create', [CourseController::class, 'create']);
-Route::post('courses/create', [CourseController::class, 'store']);
-Route::get('courses/show/:id', [CourseController::class, 'show']);
-Route::get('courses/edit/:id', [CourseController::class, 'edit']);
-Route::post('courses/edit/:id', [CourseController::class, 'update']);
-Route::post('courses/delete/:id', [CourseController::class, 'delete']);
-Route::post('courses/enroll/:id', [CourseController::class, 'enroll']);
+// Load routes
+require_once __DIR__ . '/routes/web.php';
 
 // Run the router
-Route::run(); 
+App\Route::run(); 

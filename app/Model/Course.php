@@ -2,207 +2,192 @@
 
 namespace App\Model;
 
+use PDO;
 use App\Database;
 
-class Course extends \App\Model {
-    protected $table = 'courses';
+class Course
+{
+    private $db;
 
-    public function getAllCourses() {
-        try {
-            return $this->db->fetchAll("SELECT * FROM {$this->table} ORDER BY code");
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error fetching courses');
-        }
+    public function __construct()
+    {
+        $this->db = Database::getInstance()->getConnection();
     }
 
-    public function getCoursesByCategory($category) {
-        try {
-            if (empty($category)) {
-                throw new \Exception('Category is required');
-            }
-
-            return $this->db->fetchAll(
-                "SELECT * FROM {$this->table} WHERE category = :category ORDER BY code",
-                ['category' => $category]
-            );
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error fetching courses by category');
-        }
+    public function getAll()
+    {
+        $stmt = $this->db->query("
+            SELECT *, 
+                   code as course_code,
+                   name as course_name
+            FROM courses 
+            ORDER BY code
+        ");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function getCourse($id) {
-        try {
-            if (!is_numeric($id) || $id <= 0) {
-                throw new \Exception('Invalid course ID');
-            }
-
-            $course = $this->db->fetch(
-                "SELECT * FROM {$this->table} WHERE id = :id",
-                ['id' => $id]
-            );
-
-            if (!$course) {
-                throw new \Exception('Course not found');
-            }
-
-            return $course;
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error fetching course');
-        }
+    public function getById($id)
+    {
+        $stmt = $this->db->prepare("
+            SELECT *, 
+                   code as course_code,
+                   name as course_name
+            FROM courses 
+            WHERE id = ?
+        ");
+        $stmt->execute([$id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function createCourse($data) {
-        try {
-            // Validate required fields
-            $required = ['code', 'name', 'credits', 'category'];
-            foreach ($required as $field) {
-                if (empty($data[$field])) {
-                    throw new \Exception("Field {$field} is required");
-                }
-            }
-
-            // Validate numeric fields
-            if (!is_numeric($data['credits']) || $data['credits'] <= 0) {
-                throw new \Exception('Credits must be a positive number');
-            }
-
-            if (!empty($data['max_students']) && (!is_numeric($data['max_students']) || $data['max_students'] <= 0)) {
-                throw new \Exception('Maximum students must be a positive number');
-            }
-
-            // Check if course code already exists
-            $exists = $this->db->fetch(
-                "SELECT id FROM {$this->table} WHERE code = :code",
-                ['code' => $data['code']]
-            );
-
-            if ($exists) {
-                throw new \Exception('Course code already exists');
-            }
-
-            // Set default values
-            $data['max_students'] = !empty($data['max_students']) ? (int) $data['max_students'] : 30;
-            $data['description'] = $data['description'] ?? '';
-            $data['instructor_name'] = $data['instructor_name'] ?? '';
-            $data['schedule_days'] = $data['schedule_days'] ?? '';
-            $data['schedule_time'] = $data['schedule_time'] ?? '';
-            $data['room'] = $data['room'] ?? '';
-
-            return $this->create($data);
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error creating course');
-        }
+    public function getEnrolledCourses($studentId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.*, 
+                   e.grade, 
+                   e.id as enrollment_id,
+                   c.code as course_code,
+                   c.name as course_name
+            FROM courses c
+            JOIN enrollments e ON c.id = e.course_id
+            WHERE e.student_id = ?
+            ORDER BY c.code
+        ");
+        $stmt->execute([$studentId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function updateCourse($id, $data) {
-        try {
-            if (!is_numeric($id) || $id <= 0) {
-                throw new \Exception('Invalid course ID');
-            }
-
-            // Validate required fields
-            $required = ['code', 'name', 'credits', 'category'];
-            foreach ($required as $field) {
-                if (empty($data[$field])) {
-                    throw new \Exception("Field {$field} is required");
-                }
-            }
-
-            // Validate numeric fields
-            if (!is_numeric($data['credits']) || $data['credits'] <= 0) {
-                throw new \Exception('Credits must be a positive number');
-            }
-
-            if (!empty($data['max_students']) && (!is_numeric($data['max_students']) || $data['max_students'] <= 0)) {
-                throw new \Exception('Maximum students must be a positive number');
-            }
-
-            // Check if course exists
-            $exists = $this->db->fetch(
-                "SELECT id FROM {$this->table} WHERE id = :id",
-                ['id' => $id]
-            );
-
-            if (!$exists) {
-                throw new \Exception('Course not found');
-            }
-
-            // Check if course code already exists for different course
-            $duplicate = $this->db->fetch(
-                "SELECT id FROM {$this->table} WHERE code = :code AND id != :id",
-                ['code' => $data['code'], 'id' => $id]
-            );
-
-            if ($duplicate) {
-                throw new \Exception('Course code already exists');
-            }
-
-            // Set default values
-            $data['max_students'] = !empty($data['max_students']) ? (int) $data['max_students'] : 30;
-            $data['description'] = $data['description'] ?? '';
-            $data['instructor_name'] = $data['instructor_name'] ?? '';
-            $data['schedule_days'] = $data['schedule_days'] ?? '';
-            $data['schedule_time'] = $data['schedule_time'] ?? '';
-            $data['room'] = $data['room'] ?? '';
-
-            return $this->update($id, $data);
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error updating course');
-        }
+    public function getStudentSchedule($studentId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT c.*, 
+                   e.id as enrollment_id,
+                   c.code as course_code,
+                   c.name as course_name
+            FROM courses c
+            JOIN enrollments e ON c.id = e.course_id
+            WHERE e.student_id = ?
+            ORDER BY c.schedule_days, c.schedule_time
+        ");
+        $stmt->execute([$studentId]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function deleteCourse($id) {
-        try {
-            if (!is_numeric($id) || $id <= 0) {
-                throw new \Exception('Invalid course ID');
-            }
+    public function create($data)
+    {
+        $stmt = $this->db->prepare("
+            INSERT INTO courses (code, name, description, credits, instructor_name, schedule_days, schedule_time, room)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ");
+        return $stmt->execute([
+            $data['code'],
+            $data['name'],
+            $data['description'],
+            $data['credits'],
+            $data['instructor_name'],
+            $data['schedule_days'],
+            $data['schedule_time'],
+            $data['room']
+        ]);
+    }
 
-            // Check if course exists
-            $exists = $this->db->fetch(
-                "SELECT id FROM {$this->table} WHERE id = :id",
-                ['id' => $id]
-            );
+    public function update($id, $data)
+    {
+        $stmt = $this->db->prepare("
+            UPDATE courses 
+            SET code = ?, 
+                name = ?, 
+                description = ?, 
+                credits = ?, 
+                instructor_name = ?, 
+                schedule_days = ?, 
+                schedule_time = ?, 
+                room = ?
+            WHERE id = ?
+        ");
+        return $stmt->execute([
+            $data['code'],
+            $data['name'],
+            $data['description'],
+            $data['credits'],
+            $data['instructor_name'],
+            $data['schedule_days'],
+            $data['schedule_time'],
+            $data['room'],
+            $id
+        ]);
+    }
 
-            if (!$exists) {
-                throw new \Exception('Course not found');
-            }
+    public function delete($id)
+    {
+        $stmt = $this->db->prepare("DELETE FROM courses WHERE id = ?");
+        return $stmt->execute([$id]);
+    }
 
-            // Delete enrollments first
-            $this->db->query(
-                "DELETE FROM enrollments WHERE course_id = :id",
-                ['id' => $id]
-            );
+    public function isEnrolled($studentId, $courseId)
+    {
+        $stmt = $this->db->prepare("
+            SELECT COUNT(*) FROM enrollments 
+            WHERE student_id = ? AND course_id = ?
+        ");
+        $stmt->execute([$studentId, $courseId]);
+        return $stmt->fetchColumn() > 0;
+    }
 
-            // Delete course
-            return $this->delete($id);
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error deleting course');
+    public function enroll($studentId, $courseId)
+    {
+        if ($this->isEnrolled($studentId, $courseId)) {
+            return false;
         }
+
+        $stmt = $this->db->prepare("
+            INSERT INTO enrollments (student_id, course_id)
+            VALUES (?, ?)
+        ");
+        return $stmt->execute([$studentId, $courseId]);
+    }
+
+    public function drop($studentId, $courseId)
+    {
+        $stmt = $this->db->prepare("
+            DELETE FROM enrollments 
+            WHERE student_id = ? AND course_id = ?
+        ");
+        return $stmt->execute([$studentId, $courseId]);
+    }
+
+    public function getTotalCount()
+    {
+        $sql = "SELECT COUNT(*) as count FROM courses";
+        $stmt = $this->db->query($sql);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return (int)$result['count'];
+    }
+
+    public function getCoursesByCategory($category)
+    {
+        $sql = "SELECT * FROM courses WHERE category = :category ORDER BY code";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['category' => $category]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function searchCourses($query) {
         try {
             if (empty($query)) {
-                return $this->getAllCourses();
+                return $this->getAll();
             }
 
             $searchTerm = "%{$query}%";
-            return $this->db->fetchAll(
-                "SELECT * FROM {$this->table} 
-                WHERE code LIKE :query 
-                OR name LIKE :query 
-                OR description LIKE :query 
-                OR category LIKE :query 
-                OR instructor_name LIKE :query 
-                ORDER BY code",
-                ['query' => $searchTerm]
-            );
+            $sql = "SELECT * FROM courses 
+                    WHERE code LIKE :query 
+                    OR name LIKE :query 
+                    OR description LIKE :query 
+                    OR category LIKE :query 
+                    OR instructor_name LIKE :query 
+                    ORDER BY code";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['query' => $searchTerm]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
             error_log($e->getMessage());
             throw new \Exception('Error searching courses');
@@ -215,19 +200,19 @@ class Course extends \App\Model {
                 throw new \Exception('Invalid course ID');
             }
 
-            $course = $this->db->fetch(
-                "SELECT max_students FROM {$this->table} WHERE id = :id",
-                ['id' => $courseId]
-            );
+            $sql = "SELECT max_students FROM courses WHERE id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['id' => $courseId]);
+            $course = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$course) {
                 throw new \Exception('Course not found');
             }
 
-            $enrolled = $this->db->fetch(
-                "SELECT COUNT(*) as count FROM enrollments WHERE course_id = :id",
-                ['id' => $courseId]
-            );
+            $sql = "SELECT COUNT(*) as count FROM enrollments WHERE course_id = :id";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['id' => $courseId]);
+            $enrolled = $stmt->fetch(PDO::FETCH_ASSOC);
 
             return $course['max_students'] - $enrolled['count'];
         } catch (\PDOException $e) {
@@ -242,63 +227,16 @@ class Course extends \App\Model {
                 throw new \Exception('Invalid course ID');
             }
 
-            return $this->db->fetchAll(
-                "SELECT u.* FROM users u 
-                JOIN enrollments e ON u.id = e.user_id 
-                WHERE e.course_id = :id 
-                ORDER BY u.name",
-                ['id' => $courseId]
-            );
+            $sql = "SELECT u.* FROM users u 
+                    JOIN enrollments e ON u.id = e.user_id 
+                    WHERE e.course_id = :id 
+                    ORDER BY u.name";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute(['id' => $courseId]);
+            return $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\PDOException $e) {
             error_log($e->getMessage());
             throw new \Exception('Error getting enrolled students');
-        }
-    }
-
-    public function enrollStudent($courseId, $userId) {
-        try {
-            if (!is_numeric($courseId) || $courseId <= 0) {
-                throw new \Exception('Invalid course ID');
-            }
-
-            if (!is_numeric($userId) || $userId <= 0) {
-                throw new \Exception('Invalid user ID');
-            }
-
-            // Check if course exists
-            $course = $this->db->fetch(
-                "SELECT * FROM {$this->table} WHERE id = :id",
-                ['id' => $courseId]
-            );
-
-            if (!$course) {
-                throw new \Exception('Course not found');
-            }
-
-            // Check if already enrolled
-            $enrolled = $this->db->fetch(
-                "SELECT id FROM enrollments 
-                WHERE course_id = :course_id AND user_id = :user_id",
-                ['course_id' => $courseId, 'user_id' => $userId]
-            );
-
-            if ($enrolled) {
-                throw new \Exception('Already enrolled in this course');
-            }
-
-            // Check available seats
-            if ($this->getAvailableSeats($courseId) <= 0) {
-                throw new \Exception('No available seats in this course');
-            }
-
-            // Enroll student
-            return $this->db->query(
-                "INSERT INTO enrollments (course_id, user_id) VALUES (:course_id, :user_id)",
-                ['course_id' => $courseId, 'user_id' => $userId]
-            );
-        } catch (\PDOException $e) {
-            error_log($e->getMessage());
-            throw new \Exception('Error enrolling in course');
         }
     }
 } 

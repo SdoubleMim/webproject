@@ -7,6 +7,13 @@ use App\Model\Student;
 
 class AuthController
 {
+    private $studentModel;
+
+    public function __construct()
+    {
+        $this->studentModel = new Student();
+    }
+
     public function loginForm()
     {
         view('auth/login');
@@ -14,16 +21,16 @@ class AuthController
 
     public function login()
     {
-        $email = $_POST['email'] ?? '';
+        $studentId = $_POST['student_id'] ?? '';
         $password = $_POST['password'] ?? '';
 
-        if (empty($email) || empty($password)) {
-            $_SESSION['message'] = 'Email and password are required';
+        if (empty($studentId) || empty($password)) {
+            $_SESSION['message'] = 'Student ID and password are required';
             $_SESSION['message_type'] = 'danger';
             redirect('/login');
         }
 
-        $user = User::findByEmail($email);
+        $user = User::findByStudentId($studentId);
         
         if ($user && password_verify($password, $user['password'])) {
             $_SESSION['user'] = [
@@ -94,7 +101,7 @@ class AuthController
                 'address' => $_POST['address'] ?? null
             ];
 
-            if (Student::create($studentData)) {
+            if ($this->studentModel->create($studentData)) {
                 $_SESSION['message'] = 'Registration successful! Please login.';
                 $_SESSION['message_type'] = 'success';
                 redirect('/login');

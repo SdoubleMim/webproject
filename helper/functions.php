@@ -13,9 +13,11 @@ if (!function_exists('redirect')) {
     {
         // Add base path if path doesn't start with http:// or https://
         if (!preg_match('~^https?://~i', $path)) {
-            $path = '/webproject' . ($path[0] === '/' ? $path : '/' . $path);
+            $path = getBaseUrl() . ($path[0] === '/' ? $path : '/' . $path);
         }
-        header("Location: {$path}");
+        if (!headers_sent()) {
+            header("Location: {$path}");
+        }
         exit;
     }
 }
@@ -30,380 +32,81 @@ if (!function_exists('old')) {
 if (!function_exists('auth')) {
     function auth(): ?array
     {
-        return $_SESSION['user'] ?? null;
-    }
-}
-
-if (!function_exists('csrf_token')) {
-    function csrf_token(): string
-    {
-        if (!isset($_SESSION['csrf_token'])) {
-            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-        }
-        return $_SESSION['csrf_token'];
-    }
-}
-
-if (!function_exists('csrf_field')) {
-    function csrf_field(): string
-    {
-        return '<input type="hidden" name="csrf_token" value="' . csrf_token() . '">';
-    }
-}
-
-/**
- * Check if a user is logged in
- * @return bool
- */
-function auth() {
-    return isset($_SESSION['user_id']);
-}
-
-/**
- * Check if the logged-in user is an admin
- * @return bool
- */
-function isAdmin() {
-    return isset($_SESSION['user_id']) && isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
-}
-
-/**
- * Get the current logged-in user's ID
- * @return int|null
- */
-function getCurrentUserId() {
-    return $_SESSION['user_id'] ?? null;
-}
-
-/**
- * Get the current logged-in user's role
- * @return string|null
- */
-function getCurrentUserRole() {
-    return $_SESSION['user_role'] ?? null;
-}
-
-/**
- * Get base URL of the application
- * @return string
- */
-function getBaseUrl() {
-    return '/webproject';
-}
-
-/**
- * Format a date string
- * @param string $date
- * @param string $format
- * @return string
- */
-function formatDate($date, $format = 'Y-m-d H:i:s') {
-    return date($format, strtotime($date));
-}
-
-/**
- * Escape HTML special characters
- * @param string $string
- * @return string
- */
-function e($string) {
-    return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
-}
-
-/**
- * Check if the current request is POST
- * @return bool
- */
-function isPost() {
-    return $_SERVER['REQUEST_METHOD'] === 'POST';
-}
-
-/**
- * Check if the current request is GET
- * @return bool
- */
-function isGet() {
-    return $_SERVER['REQUEST_METHOD'] === 'GET';
-}
-
-/**
- * Set flash message
- * @param string $message
- * @param string $type
- * @return void
- */
-function setFlash($message, $type = 'info') {
-    $_SESSION['message'] = $message;
-    $_SESSION['message_type'] = $type;
-}
-
-/**
- * Get flash message
- * @return array|null
- */
-function getFlash() {
-    if (isset($_SESSION['message'])) {
-        $message = [
-            'message' => $_SESSION['message'],
-            'type' => $_SESSION['message_type']
-        ];
-        unset($_SESSION['message'], $_SESSION['message_type']);
-        return $message;
-    }
-    return null;
-}
-
-/**
- * Check if string contains only alphanumeric characters
- * @param string $string
- * @return bool
- */
-function isAlphanumeric($string) {
-    return ctype_alnum($string);
-}
-
-/**
- * Generate CSRF token
- * @return string
- */
-function generateCsrfToken() {
-    if (!isset($_SESSION['csrf_token'])) {
-        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
-    }
-    return $_SESSION['csrf_token'];
-}
-
-/**
- * Verify CSRF token
- * @param string $token
- * @return bool
- */
-function verifyCsrfToken($token) {
-    return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
-}
-
-/**
- * Get CSRF token field
- * @return string
- */
-function csrfField() {
-    return '<input type="hidden" name="csrf_token" value="' . generateCsrfToken() . '">';
-}
-
-/**
- * Check if the current user can perform an action
- * @param string $action
- * @param mixed $resource
- * @return bool
- */
-function can($action, $resource = null) {
-    $role = getCurrentUserRole();
-    
-    // Define permissions
-    $permissions = [
-        'admin' => ['*'],
-        'teacher' => ['view', 'create', 'edit', 'delete'],
-        'student' => ['view', 'enroll']
-    ];
-
-    // Check if role exists and has permissions
-    if (!isset($permissions[$role])) {
-        return false;
-    }
-
-    // Admin can do everything
-    if (in_array('*', $permissions[$role])) {
-        return true;
-    }
-
-    // Check if action is allowed for role
-    return in_array($action, $permissions[$role]);
-}
-
-/**
- * Format currency
- * @param float $amount
- * @return string
- */
-function formatCurrency($amount) {
-    return number_format($amount, 2);
-}
-
-/**
- * Format file size
- * @param int $bytes
- * @return string
- */
-function formatFileSize($bytes) {
-    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
-    $i = 0;
-    while ($bytes >= 1024 && $i < count($units) - 1) {
-        $bytes /= 1024;
-        $i++;
-    }
-    return round($bytes, 2) . ' ' . $units[$i];
-}
-
-/**
- * Get file extension
- * @param string $filename
- * @return string
- */
-function getFileExtension($filename) {
-    return strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-}
-
-/**
- * Check if file extension is allowed
- * @param string $filename
- * @param array $allowedExtensions
- * @return bool
- */
-function isAllowedFileExtension($filename, $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']) {
-    return in_array(getFileExtension($filename), $allowedExtensions);
-}
-
-/**
- * Generate random string
- * @param int $length
- * @return string
- */
-function generateRandomString($length = 10) {
-    $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    $string = '';
-    for ($i = 0; $i < $length; $i++) {
-        $string .= $characters[rand(0, strlen($characters) - 1)];
-    }
-    return $string;
-}
-
-/**
- * Clean input array
- * @param array $data
- * @return array
- */
-function cleanInput($data) {
-    $clean = [];
-    foreach ($data as $key => $value) {
-        if (is_array($value)) {
-            $clean[$key] = cleanInput($value);
-        } else {
-            $clean[$key] = trim(strip_tags($value));
-        }
-    }
-    return $clean;
-}
-
-if (!function_exists('e')) {
-    /**
-     * Escape HTML entities in a string.
-     *
-     * @param string $value
-     * @return string
-     */
-    function e($value)
-    {
-        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8', false);
-    }
-}
-
-if (!function_exists('getBaseUrl')) {
-    /**
-     * Get the base URL for the application.
-     *
-     * @return string
-     */
-    function getBaseUrl()
-    {
-        return '/webproject';
-    }
-}
-
-if (!function_exists('auth')) {
-    /**
-     * Get the authenticated user.
-     *
-     * @return array|null
-     */
-    function auth()
-    {
         return isset($_SESSION['user']) ? $_SESSION['user'] : null;
     }
 }
 
 if (!function_exists('isAdmin')) {
-    /**
-     * Check if the current user is an admin.
-     *
-     * @return bool
-     */
-    function isAdmin()
+    function isAdmin(): bool
     {
-        return isset($_SESSION['user']) && $_SESSION['user']['role'] === 'admin';
-    }
-}
-
-if (!function_exists('isTeacher')) {
-    /**
-     * Check if the current user is a teacher.
-     *
-     * @return bool
-     */
-    function isTeacher()
-    {
-        return isset($_SESSION['user']) && $_SESSION['user']['role'] === 'teacher';
-    }
-}
-
-if (!function_exists('isStudent')) {
-    /**
-     * Check if the current user is a student.
-     *
-     * @return bool
-     */
-    function isStudent()
-    {
-        return isset($_SESSION['user']) && $_SESSION['user']['role'] === 'student';
+        $user = auth();
+        return $user && $user['role'] === 'admin';
     }
 }
 
 if (!function_exists('getCurrentUserId')) {
-    /**
-     * Get the current user's ID.
-     *
-     * @return int|null
-     */
-    function getCurrentUserId()
+    function getCurrentUserId(): ?int
     {
-        return isset($_SESSION['user']) ? $_SESSION['user']['id'] : null;
+        $user = auth();
+        return $user ? (int)$user['id'] : null;
     }
 }
 
-if (!function_exists('redirect')) {
-    /**
-     * Redirect to a given path.
-     *
-     * @param string $path
-     * @return void
-     */
-    function redirect($path)
+if (!function_exists('getCurrentUserRole')) {
+    function getCurrentUserRole(): ?string
     {
-        $baseUrl = getBaseUrl();
-        $location = $baseUrl . '/' . ltrim($path, '/');
-        header("Location: {$location}");
-        exit();
+        $user = auth();
+        return $user ? $user['role'] : null;
+    }
+}
+
+if (!function_exists('getBaseUrl')) {
+    function getBaseUrl(): string
+    {
+        static $baseUrl = null;
+        if ($baseUrl === null) {
+            $baseUrl = '/webproject';
+            if (isset($_ENV['APP_URL'])) {
+                $parsedUrl = parse_url($_ENV['APP_URL']);
+                if (isset($parsedUrl['path'])) {
+                    $baseUrl = rtrim($parsedUrl['path'], '/');
+                }
+            }
+        }
+        return $baseUrl;
+    }
+}
+
+if (!function_exists('formatDate')) {
+    function formatDate($date, $format = 'Y-m-d H:i:s'): string
+    {
+        return date($format, strtotime($date));
+    }
+}
+
+if (!function_exists('e')) {
+    function e($value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
+    }
+}
+
+if (!function_exists('isPost')) {
+    function isPost(): bool
+    {
+        return $_SERVER['REQUEST_METHOD'] === 'POST';
+    }
+}
+
+if (!function_exists('isGet')) {
+    function isGet(): bool
+    {
+        return $_SERVER['REQUEST_METHOD'] === 'GET';
     }
 }
 
 if (!function_exists('setFlash')) {
-    /**
-     * Set a flash message.
-     *
-     * @param string $message
-     * @param string $type
-     * @return void
-     */
-    function setFlash($message, $type = 'info')
+    function setFlash(string $message, string $type = 'info'): void
     {
         $_SESSION['message'] = $message;
         $_SESSION['message_type'] = $type;
@@ -411,12 +114,7 @@ if (!function_exists('setFlash')) {
 }
 
 if (!function_exists('getFlash')) {
-    /**
-     * Get and clear the flash message.
-     *
-     * @return array|null
-     */
-    function getFlash()
+    function getFlash(): ?array
     {
         if (isset($_SESSION['message'])) {
             $message = [
@@ -431,12 +129,7 @@ if (!function_exists('getFlash')) {
 }
 
 if (!function_exists('generateCsrfToken')) {
-    /**
-     * Generate a CSRF token.
-     *
-     * @return string
-     */
-    function generateCsrfToken()
+    function generateCsrfToken(): string
     {
         if (!isset($_SESSION['csrf_token'])) {
             $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
@@ -446,72 +139,115 @@ if (!function_exists('generateCsrfToken')) {
 }
 
 if (!function_exists('validateCsrfToken')) {
-    /**
-     * Validate the CSRF token.
-     *
-     * @param string $token
-     * @return bool
-     */
-    function validateCsrfToken($token)
+    function validateCsrfToken($token): bool
     {
         return isset($_SESSION['csrf_token']) && hash_equals($_SESSION['csrf_token'], $token);
     }
 }
 
-if (!function_exists('formatDate')) {
-    /**
-     * Format a date string.
-     *
-     * @param string $date
-     * @param string $format
-     * @return string
-     */
-    function formatDate($date, $format = 'Y-m-d H:i:s')
+if (!function_exists('csrf_field')) {
+    function csrf_field(): string
     {
-        return date($format, strtotime($date));
+        if (!isset($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return '<input type="hidden" name="csrf_token" value="' . $_SESSION['csrf_token'] . '">';
     }
 }
 
-if (!function_exists('sanitizeInput')) {
-    /**
-     * Sanitize user input.
-     *
-     * @param string $input
-     * @return string
-     */
-    function sanitizeInput($input)
+if (!function_exists('can')) {
+    function can(string $action, $resource = null): bool
     {
-        return htmlspecialchars(strip_tags(trim($input)), ENT_QUOTES, 'UTF-8');
+        $role = getCurrentUserRole();
+        
+        // Define permissions based on roles
+        $permissions = [
+            'admin' => ['*'],
+            'student' => [
+                'view-course',
+                'enroll-course',
+                'view-grades',
+                'view-schedule'
+            ]
+        ];
+        
+        // Admin can do everything
+        if ($role === 'admin') {
+            return true;
+        }
+        
+        // Check if role exists and has permissions
+        if (isset($permissions[$role])) {
+            return in_array($action, $permissions[$role]) || in_array('*', $permissions[$role]);
+        }
+        
+        return false;
     }
 }
 
-if (!function_exists('validateEmail')) {
-    /**
-     * Validate an email address.
-     *
-     * @param string $email
-     * @return bool
-     */
-    function validateEmail($email)
+if (!function_exists('formatCurrency')) {
+    function formatCurrency(float $amount): string
     {
-        return filter_var($email, FILTER_VALIDATE_EMAIL) !== false;
+        return '$' . number_format($amount, 2);
+    }
+}
+
+if (!function_exists('formatFileSize')) {
+    function formatFileSize(int $bytes): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $bytes = max($bytes, 0);
+        $pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+        $pow = min($pow, count($units) - 1);
+        $bytes /= pow(1024, $pow);
+        return round($bytes, 2) . ' ' . $units[$pow];
+    }
+}
+
+if (!function_exists('getFileExtension')) {
+    function getFileExtension(string $filename): string
+    {
+        return strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+    }
+}
+
+if (!function_exists('isAllowedFileExtension')) {
+    function isAllowedFileExtension(string $filename, array $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'pdf', 'doc', 'docx']): bool
+    {
+        return in_array(getFileExtension($filename), $allowedExtensions);
+    }
+}
+
+if (!function_exists('generateRandomString')) {
+    function generateRandomString(int $length = 10): string
+    {
+        $characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $randomString = '';
+        for ($i = 0; $i < $length; $i++) {
+            $randomString .= $characters[rand(0, strlen($characters) - 1)];
+        }
+        return $randomString;
+    }
+}
+
+if (!function_exists('cleanInput')) {
+    function cleanInput($data): string
+    {
+        $data = trim($data);
+        $data = stripslashes($data);
+        $data = htmlspecialchars($data);
+        return $data;
     }
 }
 
 if (!function_exists('dd')) {
-    /**
-     * Dump the passed variables and end the script.
-     *
-     * @param mixed ...$vars
-     * @return void
-     */
-    function dd(...$vars)
+    function dd(...$vars): void
     {
         foreach ($vars as $var) {
             echo '<pre>';
             var_dump($var);
             echo '</pre>';
         }
-        exit(1);
+        die();
     }
 } 
