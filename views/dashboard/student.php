@@ -15,7 +15,7 @@
 
     <!-- Quick Stats -->
     <div class="row mb-4">
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-book text-primary mb-3" style="font-size: 2rem;"></i>
@@ -24,25 +24,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4">
-            <div class="card h-100">
-                <div class="card-body text-center">
-                    <i class="bi bi-graph-up text-primary mb-3" style="font-size: 2rem;"></i>
-                    <h5 class="card-title">Average Grade</h5>
-                    <h3 class="card-text">
-                        <?php
-                        $total = 0;
-                        $count = count($grades);
-                        foreach ($grades as $grade) {
-                            $total += $grade['grade'];
-                        }
-                        echo $count > 0 ? number_format($total / $count, 2) : 'N/A';
-                        ?>
-                    </h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-4">
+        <div class="col-md-6">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <i class="bi bi-calendar3 text-primary mb-3" style="font-size: 2rem;"></i>
@@ -59,7 +41,6 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Current Courses</h5>
-                    <a href="/webproject/courses" class="btn btn-primary btn-sm">Browse Courses</a>
                 </div>
                 <div class="card-body">
                     <?php if (empty($enrolledCourses)): ?>
@@ -73,67 +54,15 @@
                                         <th>Course Name</th>
                                         <th>Instructor</th>
                                         <th>Schedule</th>
-                                        <th>Grade</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php foreach ($enrolledCourses as $course): ?>
                                         <tr>
                                             <td><?= e($course['course_code']) ?></td>
-                                            <td>
-                                                <a href="/webproject/courses/show/<?= e($course['id']) ?>" class="text-decoration-none">
-                                                    <?= e($course['course_name']) ?>
-                                                </a>
-                                            </td>
+                                            <td><?= e($course['course_name']) ?></td>
                                             <td><?= e($course['instructor_name']) ?></td>
                                             <td><?= e($course['schedule_days']) ?> <?= e($course['schedule_time']) ?></td>
-                                            <td>
-                                                <?php
-                                                $courseGrade = array_filter($grades, function($g) use ($course) {
-                                                    return $g['course_id'] === $course['id'];
-                                                });
-                                                echo !empty($courseGrade) ? reset($courseGrade)['grade'] : 'N/A';
-                                                ?>
-                                            </td>
-                                        </tr>
-                                    <?php endforeach; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    <?php endif; ?>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Schedule -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="mb-0">Upcoming Schedule</h5>
-                </div>
-                <div class="card-body">
-                    <?php if (empty($schedule)): ?>
-                        <p class="text-center text-muted">No upcoming classes scheduled.</p>
-                    <?php else: ?>
-                        <div class="table-responsive">
-                            <table class="table">
-                                <thead>
-                                    <tr>
-                                        <th>Course</th>
-                                        <th>Day</th>
-                                        <th>Time</th>
-                                        <th>Room</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php foreach ($schedule as $class): ?>
-                                        <tr>
-                                            <td><?= e($class['course_name']) ?></td>
-                                            <td><?= e($class['schedule_days']) ?></td>
-                                            <td><?= e($class['schedule_time']) ?></td>
-                                            <td><?= e($class['room']) ?></td>
                                         </tr>
                                     <?php endforeach; ?>
                                 </tbody>

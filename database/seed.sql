@@ -47,16 +47,17 @@ CREATE TABLE IF NOT EXISTS enrollments (
     id INT AUTO_INCREMENT PRIMARY KEY,
     student_id INT NOT NULL,
     course_id INT NOT NULL,
-    enrollment_date DATE NOT NULL,
-    status ENUM('enrolled', 'dropped', 'completed') DEFAULT 'enrolled',
-    grade VARCHAR(2),
-    assignments_grade DECIMAL(5,2),
-    midterm_grade DECIMAL(5,2),
-    final_grade DECIMAL(5,2),
+    enrollment_date date DEFAULT CURRENT_DATE,
+    grade varchar(2) DEFAULT NULL,
+    status enum('enrolled','dropped','completed') DEFAULT 'enrolled',
+    assignments_grade decimal(5,2) DEFAULT NULL,
+    midterm_grade decimal(5,2) DEFAULT NULL,
+    final_grade decimal(5,2) DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (student_id) REFERENCES students(id),
-    FOREIGN KEY (course_id) REFERENCES courses(id)
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+    FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_enrollment (student_id, course_id)
 );
 
 CREATE TABLE IF NOT EXISTS schedules (
@@ -103,15 +104,36 @@ INSERT INTO courses (code, name, description, credits, category, instructor_name
 ('PHY201', 'Physics I', 'Mechanics and thermodynamics', 4, 'Physics', 'Prof. Johnson', 25, 'Tuesday,Thursday', '09:00-10:30', 'Room 404');
 
 -- Insert sample enrollments
-INSERT INTO enrollments (student_id, course_id, enrollment_date, status, assignments_grade, midterm_grade, final_grade) VALUES
-(1, 1, '2024-01-15', 'enrolled', 85.50, 78.00, NULL),
-(1, 2, '2024-01-15', 'enrolled', 90.00, 88.50, NULL),
-(2, 1, '2024-01-16', 'enrolled', 92.00, 85.00, NULL),
-(2, 3, '2024-01-16', 'enrolled', 88.00, 91.50, NULL);
+INSERT INTO enrollments (student_id, course_id) 
+SELECT s.id, c.id
+FROM students s
+CROSS JOIN courses c
+WHERE 
+    -- For student 1
+    (s.id = 1 AND c.code IN ('CS101', 'MATH201', 'ENG101', 'CS303')) OR
+    -- For student 2
+    (s.id = 2 AND c.code IN ('PHY201', 'CHEM101', 'BIO101', 'CS202'));
 
 -- Insert sample schedules
 INSERT INTO schedules (student_id, event_type, title, description, start_time, end_time, location, recurring, recurrence_pattern) VALUES
 (1, 'class', 'CS101 Lecture', 'Introduction to Programming class', '2024-01-22 09:00:00', '2024-01-22 10:30:00', 'Room 101', 1, 'weekly-mon-wed'),
 (1, 'study_group', 'CS101 Study Group', 'Programming practice session', '2024-01-23 15:00:00', '2024-01-23 17:00:00', 'Library Room 2', 1, 'weekly-tue'),
 (2, 'class', 'ENG101 Lecture', 'English Composition class', '2024-01-22 14:00:00', '2024-01-22 15:30:00', 'Room 303', 1, 'weekly-mon-wed'),
-(2, 'exam', 'MATH201 Midterm', 'Calculus I Midterm Examination', '2024-03-15 11:00:00', '2024-03-15 13:00:00', 'Room 202', 0, NULL); 
+(2, 'exam', 'MATH201 Midterm', 'Calculus I Midterm Examination', '2024-03-15 11:00:00', '2024-03-15 13:00:00', 'Room 202', 0, NULL);
+
+-- Insert additional courses
+INSERT INTO courses (code, name, description, credits, category, instructor_name, schedule_days, schedule_time, room) VALUES
+-- Additional Monday-Wednesday courses
+('CS105', 'Web Development', 'HTML, CSS, and JavaScript', 3, 'Computer Science', 'Dr. Lee', 'Monday,Wednesday', '08:00-10:00', 'Room 104'),
+('MATH205', 'Statistics', 'Probability and statistical analysis', 3, 'Mathematics', 'Dr. Chen', 'Monday,Wednesday', '10:00-12:00', 'Room 205'),
+('ART101', 'Introduction to Art', 'Art history and appreciation', 3, 'Arts', 'Prof. Garcia', 'Monday,Wednesday', '14:00-16:00', 'Room 304'),
+
+-- Additional Tuesday-Thursday courses
+('CS210', 'Object-Oriented Programming', 'Java programming concepts', 3, 'Computer Science', 'Dr. Kumar', 'Tuesday,Thursday', '08:00-10:00', 'Room 402'),
+('BUS201', 'Business Management', 'Principles of management', 3, 'Business', 'Dr. Thompson', 'Tuesday,Thursday', '10:00-12:00', 'Room 503'),
+('PSY101', 'Introduction to Psychology', 'Basic psychology concepts', 3, 'Psychology', 'Dr. Martinez', 'Tuesday,Thursday', '14:00-16:00', 'Room 602'),
+
+-- Additional Friday courses
+('ENG202', 'Creative Writing', 'Fiction and poetry writing', 3, 'English', 'Prof. Roberts', 'Friday', '08:00-10:00', 'Room 105'),
+('SOC101', 'Introduction to Sociology', 'Social structures and interactions', 3, 'Sociology', 'Dr. White', 'Friday', '10:00-12:00', 'Room 204'),
+('MUS101', 'Music Appreciation', 'Understanding music theory and history', 3, 'Music', 'Prof. Turner', 'Friday', '14:00-16:00', 'Room 106'); 

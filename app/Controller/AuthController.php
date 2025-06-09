@@ -32,12 +32,24 @@ class AuthController
 
         $user = User::findByStudentId($studentId);
         
+        // Debug information
+        error_log("Login attempt for student ID: " . $studentId);
+        if ($user) {
+            error_log("User found, verifying password");
+            $isValid = password_verify($password, $user['password']);
+            error_log("Password verification result: " . ($isValid ? 'true' : 'false'));
+        } else {
+            error_log("User not found");
+        }
+        
         if ($user && password_verify($password, $user['password'])) {
+            // Get fresh user data after successful verification
+            $freshUser = User::findById($user['id']);
             $_SESSION['user'] = [
-                'id' => $user['id'],
-                'email' => $user['email'],
-                'username' => $user['username'],
-                'role' => $user['role']
+                'id' => $freshUser['id'],
+                'email' => $freshUser['email'],
+                'username' => $freshUser['username'],
+                'role' => $freshUser['role']
             ];
             $_SESSION['message'] = 'Welcome back!';
             $_SESSION['message_type'] = 'success';
@@ -101,7 +113,7 @@ class AuthController
                 'address' => $_POST['address'] ?? null
             ];
 
-            if ($this->studentModel->create($studentData)) {
+            if ($this->studentModel->createStudent($studentData)) {
                 $_SESSION['message'] = 'Registration successful! Please login.';
                 $_SESSION['message_type'] = 'success';
                 redirect('/login');

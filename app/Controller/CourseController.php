@@ -52,18 +52,16 @@ class CourseController {
 
             // Get current user and their enrolled courses
             $user = auth();
-            $student = $this->studentModel->getByUserId($user['id']);
             $enrolledIds = [];
             
-            if ($student) {
-                $enrolledCourses = $this->courseModel->getEnrolledCourses($student['id']);
-                $enrolledIds = array_column($enrolledCourses, 'id');
+            // Only try to get student info if user is a student
+            if ($user['role'] === 'student') {
+                $student = $this->studentModel->getByUserId($user['id']);
+                if ($student) {
+                    $enrolledCourses = $this->courseModel->getEnrolledCourses($student['id']);
+                    $enrolledIds = array_column($enrolledCourses, 'id');
+                }
             }
-
-            // Log for debugging
-            error_log('Courses found: ' . count($courses));
-            error_log('Student ID: ' . ($student ? $student['id'] : 'Not found'));
-            error_log('Enrolled courses: ' . implode(', ', $enrolledIds));
 
             // Render the view
             $this->render('index', [

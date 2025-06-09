@@ -2,12 +2,13 @@
 
 namespace App\Model;
 
-use App\Database;
+use App\Database\Database;
 use PDO;
 
 class BaseModel
 {
     protected $db;
+    protected $table;
 
     public function __construct()
     {

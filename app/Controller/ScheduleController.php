@@ -4,56 +4,99 @@ namespace App\Controller;
 
 use App\Model\Course;
 use App\Model\Student;
+use App\Model\Enrollment;
+use App\Database\Database;
+use PDO;
+use Exception;
 
-class ScheduleController
+class ScheduleController extends BaseController
 {
     private $courseModel;
     private $studentModel;
+    private $enrollmentModel;
     private $viewPath;
 
     public function __construct()
     {
-        if (!auth()) {
-            setFlash('Please login to continue', 'warning');
-            redirect('/login');
-        }
+        parent::__construct();
+        $user = $this->requireLogin();
+        
         $this->courseModel = new Course();
         $this->studentModel = new Student();
+        $this->enrollmentModel = new Enrollment();
         $this->viewPath = __DIR__ . '/../../views';
     }
 
     public function index()
     {
-        $user = auth();
-        $student = $this->studentModel->getByUserId($user['id']);
-        
-        if (!$student) {
-            setFlash('Student profile not found', 'danger');
-            redirect('/dashboard');
-        }
+        try {
+            // Enable error reporting
+            error_reporting(E_ALL);
+            ini_set('display_errors', 1);
 
-        $schedule = $this->courseModel->getStudentSchedule($student['id']);
-        
-        // Group schedule by days
-        $scheduleByDay = [];
-        foreach ($schedule as $class) {
-            $days = explode(',', $class['schedule_days']);
-            foreach ($days as $day) {
-                $day = trim($day);
-                if (!isset($scheduleByDay[$day])) {
-                    $scheduleByDay[$day] = [];
-                }
-                $scheduleByDay[$day][] = $class;
+            $user = $this->getCurrentUser();
+            if (!$user) {
+                throw new Exception("No user logged in");
             }
-        }
-        
-        // Sort by time for each day
-        foreach ($scheduleByDay as &$daySchedule) {
-            usort($daySchedule, function($a, $b) {
-                return strtotime($a['schedule_time']) - strtotime($b['schedule_time']);
-            });
-        }
+            
+            // Get student record
+            $stmt = $this->db->prepare("SELECT * FROM students WHERE user_id = ?");
+            $stmt->execute([$user['id']]);
+            $student = $stmt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$student) {
+                throw new Exception("No student record found for user ID: " . $user['id']);
+            }
 
-        require_once $this->viewPath . '/schedule/index.php';
+            // Get enrolled courses
+            $query = "SELECT c.* 
+                     FROM courses c 
+                     INNER JOIN enrollments e ON c.id = e.course_id 
+                     WHERE e.student_id = ?";
+            
+            $stmt = $this->db->prepare($query);
+            $stmt->execute([$student['id']]);
+            $courses = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            if (empty($courses)) {
+                echo "<!-- Debug: No courses found for student ID: " . $student['id'] . " -->";
+            }
+
+            // Initialize schedule array
+            $scheduleByDay = [
+                'Monday' => [],
+                'Tuesday' => [],
+                'Wednesday' => [],
+                'Thursday' => [],
+                'Friday' => []
+            ];
+
+            // Organize courses by day and time
+            foreach ($courses as $course) {
+                if (!empty($course['schedule_days']) && !empty($course['schedule_time'])) {
+                    $days = array_map('trim', explode(',', $course['schedule_days']));
+                    foreach ($days as $day) {
+                        if (isset($scheduleByDay[$day])) {
+                            $scheduleByDay[$day][] = $course;
+                        }
+                    }
+                }
+            }
+
+            // Debug output
+            echo "<!-- Debug Info:
+            User ID: " . $user['id'] . "
+            Student ID: " . $student['id'] . "
+            Number of courses: " . count($courses) . "
+            -->";
+
+            // Make data available to the view
+            require_once $this->viewPath . '/schedule/index.php';
+            
+        } catch (Exception $e) {
+            echo "Error: " . $e->getMessage();
+            // Log the error
+            error_log($e->getMessage());
+        }
     }
-}
+} 

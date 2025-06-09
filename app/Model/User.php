@@ -23,7 +23,10 @@ class User
         $sql = "INSERT INTO users (username, email, password, role) VALUES (:username, :email, :password, :role)";
         
         $stmt = $db->prepare($sql);
-        return $stmt->execute($data);
+        if ($stmt->execute($data)) {
+            return $db->lastInsertId();
+        }
+        return false;
     }
 
     public static function findByEmail(string $email)
@@ -55,6 +58,18 @@ class User
         
         $stmt = $db->prepare($sql);
         return $stmt->execute(array_merge($data, ['id' => $id]));
+    }
+
+    public static function updatePassword(int $id, string $hashedPassword)
+    {
+        $db = self::getDB();
+        $sql = "UPDATE users SET password = :password WHERE id = :id";
+        
+        $stmt = $db->prepare($sql);
+        return $stmt->execute([
+            'password' => $hashedPassword,
+            'id' => $id
+        ]);
     }
 
     public static function delete(int $id)

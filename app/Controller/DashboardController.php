@@ -50,12 +50,10 @@ class DashboardController
             ]);
         } else if ($user['role'] === 'admin') {
             // Get statistics for admin
-            $totalStudents = $this->studentModel->getTotalCount();
             $totalCourses = $this->courseModel->getTotalCount();
             $recentEnrollments = $this->enrollmentModel->getRecentEnrollments();
             
             view('dashboard/admin', [
-                'totalStudents' => $totalStudents,
                 'totalCourses' => $totalCourses,
                 'recentEnrollments' => $recentEnrollments
             ]);

@@ -6,7 +6,7 @@ use App\Controller\FrontController;
 use App\Controller\CourseController;
 use App\Controller\DashboardController;
 use App\Controller\StudentController;
-use App\Controller\GradeController;
+use App\Controller\ProfileController;
 use App\Controller\ScheduleController;
 
 // Front Controller routes
@@ -22,6 +22,10 @@ Route::get('logout', [AuthController::class, 'logout'], 'auth');
 
 // Dashboard routes
 Route::get('dashboard', [DashboardController::class, 'index'], 'auth');
+
+// Profile routes
+Route::get('profile', [ProfileController::class, 'index'], 'auth');
+Route::post('profile/change-password', [ProfileController::class, 'changePassword'], ['auth', 'csrf']);
 
 // Course routes
 Route::get('courses', [CourseController::class, 'index'], 'auth');
@@ -41,9 +45,6 @@ Route::get('students/edit/:id', [StudentController::class, 'edit'], 'auth');
 Route::post('students/edit/:id', [StudentController::class, 'update'], ['auth', 'csrf']);
 
 // Grade routes
-Route::get('grades', [GradeController::class, 'index'], 'auth');
-Route::get('grades/all', [GradeController::class, 'allGrades'], ['auth', 'admin']);
-Route::post('grades/update', [GradeController::class, 'updateGrade'], ['auth', 'admin', 'csrf']);
 
 // Schedule routes
 Route::get('schedule', [ScheduleController::class, 'index'], 'auth'); 

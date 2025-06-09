@@ -6,7 +6,6 @@ class Route
 {
     private static $routes = [];
     private static $baseUrl;
-    private static $middlewares = [];
 
     public static function init()
     {
@@ -56,9 +55,17 @@ class Route
             if (isset(self::$routes[$method][$uri])) {
                 $route = self::$routes[$method][$uri];
                 
-                // Run middleware if exists
+                // Check middleware
                 if ($route['middleware']) {
-                    self::runMiddleware($route['middleware']);
+                    if ($route['middleware'] === 'auth' && !isset($_SESSION['user'])) {
+                        setFlash('Please login to continue', 'warning');
+                        header('Location: ' . self::$baseUrl . '/login');
+                        exit;
+                    }
+                    if ($route['middleware'] === 'guest' && isset($_SESSION['user'])) {
+                        header('Location: ' . self::$baseUrl . '/dashboard');
+                        exit;
+                    }
                 }
                 
                 $callback = $route['callback'];
@@ -128,18 +135,18 @@ class Route
     {
         switch ($middleware) {
             case 'auth':
-                if (!auth()) {
+                if (!isset($_SESSION['user'])) {
                     setFlash('Please login to continue', 'warning');
                     redirect('/login');
                 }
                 break;
             case 'guest':
-                if (auth()) {
+                if (isset($_SESSION['user'])) {
                     redirect('/dashboard');
                 }
                 break;
             case 'admin':
-                if (!isAdmin()) {
+                if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'admin') {
                     setFlash('Unauthorized access', 'danger');
                     redirect('/dashboard');
                 }

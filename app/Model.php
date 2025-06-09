@@ -2,6 +2,8 @@
 
 namespace App;
 
+use App\Database\Database;
+
 abstract class Model
 {
     protected $db;
@@ -10,19 +12,23 @@ abstract class Model
 
     public function __construct()
     {
-        $this->db = Database::getInstance();
+        $this->db = Database::getInstance()->getConnection();
     }
 
     public function find($id)
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$this->primaryKey} = :id";
-        return $this->db->fetch($sql, ['id' => $id]);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch();
     }
 
     public function all()
     {
         $sql = "SELECT * FROM {$this->table}";
-        return $this->db->fetchAll($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
 
     public function create($data)
@@ -35,7 +41,8 @@ abstract class Model
         $sql = "INSERT INTO {$this->table} (" . implode(', ', $fields) . ") 
                 VALUES (" . implode(', ', $placeholders) . ")";
 
-        $this->db->query($sql, $data);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($data);
         return $this->db->lastInsertId();
     }
 
@@ -50,31 +57,39 @@ abstract class Model
                 WHERE {$this->primaryKey} = :id";
 
         $data['id'] = $id;
-        return $this->db->query($sql, $data);
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($data);
     }
 
     public function delete($id)
     {
         $sql = "DELETE FROM {$this->table} WHERE {$this->primaryKey} = :id";
-        return $this->db->query($sql, ['id' => $id]);
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['id' => $id]);
     }
 
     public function where($conditions, $params = [])
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$conditions}";
-        return $this->db->fetchAll($sql, $params);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 
     public function findWhere($conditions, $params = [])
     {
         $sql = "SELECT * FROM {$this->table} WHERE {$conditions}";
-        return $this->db->fetch($sql, $params);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetch();
     }
 
     public function count($conditions = '1', $params = [])
     {
         $sql = "SELECT COUNT(*) as count FROM {$this->table} WHERE {$conditions}";
-        $result = $this->db->fetch($sql, $params);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        $result = $stmt->fetch();
         return $result['count'];
     }
 
@@ -82,7 +97,9 @@ abstract class Model
     {
         $offset = ($page - 1) * $perPage;
         $sql = "SELECT * FROM {$this->table} LIMIT {$perPage} OFFSET {$offset}";
-        return $this->db->fetchAll($sql);
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll();
     }
 
     public function beginTransaction()

@@ -201,10 +201,10 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark mb-4">
         <div class="container">
-            <a class="navbar-brand" href="/webproject">
+            <span class="navbar-brand">
                 <i class="bi bi-mortarboard-fill text-primary"></i> 
                 Student Management
-            </a>
+            </span>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -214,16 +214,6 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/webproject/dashboard">
                                 <i class="bi bi-speedometer2"></i> Dashboard
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/webproject/courses">
-                                <i class="bi bi-book"></i> Courses
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/webproject/grades">
-                                <i class="bi bi-graph-up"></i> Grades
                             </a>
                         </li>
                         <li class="nav-item">

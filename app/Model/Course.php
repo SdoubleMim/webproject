@@ -2,12 +2,12 @@
 
 namespace App\Model;
 
+use App\Database\Database;
 use PDO;
-use App\Database;
 
-class Course
+class Course extends BaseModel
 {
-    private $db;
+    protected $db;
 
     public function __construct()
     {
@@ -16,14 +16,25 @@ class Course
 
     public function getAll()
     {
-        $stmt = $this->db->query("
-            SELECT *, 
-                   code as course_code,
-                   name as course_name
-            FROM courses 
-            ORDER BY code
-        ");
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        try {
+            $stmt = $this->db->query("
+                SELECT *,
+                       code as code,
+                       name as name,
+                       instructor_name as instructor_name,
+                       schedule_days as schedule_days,
+                       schedule_time as schedule_time,
+                       room as room
+                FROM courses 
+                ORDER BY schedule_time, code
+            ");
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            error_log("getAll() results: " . print_r($results, true));
+            return $results;
+        } catch (\PDOException $e) {
+            error_log("Error in getAll(): " . $e->getMessage());
+            return [];
+        }
     }
 
     public function getById($id)
@@ -43,7 +54,6 @@ class Course
     {
         $stmt = $this->db->prepare("
             SELECT c.*, 
-                   e.grade, 
                    e.id as enrollment_id,
                    c.code as course_code,
                    c.name as course_name
@@ -61,12 +71,12 @@ class Course
         $stmt = $this->db->prepare("
             SELECT c.*, 
                    e.id as enrollment_id,
-                   c.code as course_code,
-                   c.name as course_name
+                   c.code as code,
+                   c.name as name
             FROM courses c
             JOIN enrollments e ON c.id = e.course_id
             WHERE e.student_id = ?
-            ORDER BY c.schedule_days, c.schedule_time
+            ORDER BY c.schedule_time, c.schedule_days
         ");
         $stmt->execute([$studentId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -75,14 +85,15 @@ class Course
     public function create($data)
     {
         $stmt = $this->db->prepare("
-            INSERT INTO courses (code, name, description, credits, instructor_name, schedule_days, schedule_time, room)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO courses (code, name, description, credits, category, instructor_name, schedule_days, schedule_time, room)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
         return $stmt->execute([
             $data['code'],
             $data['name'],
             $data['description'],
             $data['credits'],
+            $data['category'],
             $data['instructor_name'],
             $data['schedule_days'],
             $data['schedule_time'],
@@ -191,6 +202,133 @@ class Course
         } catch (\PDOException $e) {
             error_log($e->getMessage());
             throw new \Exception('Error searching courses');
+        }
+    }
+
+    public function insertSampleCourses() {
+        $sampleCourses = [
+            [
+                'code' => 'CS101',
+                'name' => 'Introduction to Programming',
+                'description' => 'Basic programming concepts using Python',
+                'credits' => 3,
+                'category' => 'Computer Science',
+                'instructor_name' => 'Dr. Smith',
+                'schedule_days' => 'Monday,Wednesday',
+                'schedule_time' => '8:00-10:00',
+                'room' => 'Room 101'
+            ],
+            [
+                'code' => 'MATH201',
+                'name' => 'Calculus I',
+                'description' => 'Limits, derivatives, and integrals',
+                'credits' => 4,
+                'category' => 'Mathematics',
+                'instructor_name' => 'Dr. Johnson',
+                'schedule_days' => 'Monday,Wednesday',
+                'schedule_time' => '10:00-12:00',
+                'room' => 'Room 202'
+            ],
+            [
+                'code' => 'ENG101',
+                'name' => 'Academic Writing',
+                'description' => 'Essay writing and composition',
+                'credits' => 3,
+                'category' => 'English',
+                'instructor_name' => 'Prof. Williams',
+                'schedule_days' => 'Monday,Wednesday',
+                'schedule_time' => '14:00-16:00',
+                'room' => 'Room 303'
+            ],
+            [
+                'code' => 'PHY201',
+                'name' => 'Physics I',
+                'description' => 'Mechanics and thermodynamics',
+                'credits' => 4,
+                'category' => 'Physics',
+                'instructor_name' => 'Dr. Brown',
+                'schedule_days' => 'Tuesday,Thursday',
+                'schedule_time' => '8:00-10:00',
+                'room' => 'Room 401'
+            ],
+            [
+                'code' => 'CHEM101',
+                'name' => 'General Chemistry',
+                'description' => 'Basic chemistry concepts',
+                'credits' => 4,
+                'category' => 'Chemistry',
+                'instructor_name' => 'Dr. Davis',
+                'schedule_days' => 'Tuesday,Thursday',
+                'schedule_time' => '10:00-12:00',
+                'room' => 'Room 502'
+            ],
+            [
+                'code' => 'BIO101',
+                'name' => 'Introduction to Biology',
+                'description' => 'Cell biology and genetics',
+                'credits' => 4,
+                'category' => 'Biology',
+                'instructor_name' => 'Dr. Wilson',
+                'schedule_days' => 'Tuesday,Thursday',
+                'schedule_time' => '14:00-16:00',
+                'room' => 'Room 601'
+            ],
+            [
+                'code' => 'CS202',
+                'name' => 'Data Structures',
+                'description' => 'Advanced programming and algorithms',
+                'credits' => 3,
+                'category' => 'Computer Science',
+                'instructor_name' => 'Dr. Anderson',
+                'schedule_days' => 'Friday',
+                'schedule_time' => '8:00-10:00',
+                'room' => 'Room 102'
+            ],
+            [
+                'code' => 'MATH202',
+                'name' => 'Linear Algebra',
+                'description' => 'Vectors, matrices, and linear transformations',
+                'credits' => 3,
+                'category' => 'Mathematics',
+                'instructor_name' => 'Dr. Taylor',
+                'schedule_days' => 'Friday',
+                'schedule_time' => '10:00-12:00',
+                'room' => 'Room 203'
+            ],
+            [
+                'code' => 'CS303',
+                'name' => 'Database Systems',
+                'description' => 'Database design and SQL',
+                'credits' => 3,
+                'category' => 'Computer Science',
+                'instructor_name' => 'Dr. Martin',
+                'schedule_days' => 'Friday',
+                'schedule_time' => '14:00-16:00',
+                'room' => 'Room 103'
+            ]
+        ];
+
+        foreach ($sampleCourses as $course) {
+            try {
+                $stmt = $this->db->prepare("
+                    INSERT INTO courses (code, name, description, credits, category, instructor_name, schedule_days, schedule_time, room)
+                    VALUES (:code, :name, :description, :credits, :category, :instructor_name, :schedule_days, :schedule_time, :room)
+                    ON DUPLICATE KEY UPDATE
+                    name = VALUES(name),
+                    description = VALUES(description),
+                    credits = VALUES(credits),
+                    category = VALUES(category),
+                    instructor_name = VALUES(instructor_name),
+                    schedule_days = VALUES(schedule_days),
+                    schedule_time = VALUES(schedule_time),
+                    room = VALUES(room)
+                ");
+                
+                $stmt->execute($course);
+            } catch (\PDOException $e) {
+                error_log("Error inserting course {$course['code']}: " . $e->getMessage());
+                throw new \Exception("Failed to insert course {$course['code']}");
+            }
         }
     }
 

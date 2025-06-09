@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Model\Student;
 use App\Model\Course;
 use App\Model\Enrollment;
+use PDOException;
+use PDO;
 
 class StudentController
 {
@@ -17,6 +19,7 @@ class StudentController
         $this->studentModel = new Student();
         $this->courseModel = new Course();
         $this->enrollmentModel = new Enrollment();
+        $this->connect();
     }
 
     public function index()
@@ -146,6 +149,33 @@ class StudentController
         } else {
             setFlash('Failed to update student', 'danger');
             redirect("/students/edit/{$id}");
+        }
+    }
+
+    public function __wakeup() {
+        // Reconnect when unserialized
+        $this->connect();
+    }
+
+    private function connect() {
+        $host = 'localhost';
+        $dbname = 'student_management';
+        $username = 'root';
+        $password = '';
+
+        try {
+            $this->connection = new PDO(
+                "mysql:host=$host;dbname=$dbname;charset=utf8mb4",
+                $username,
+                $password,
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    PDO::ATTR_EMULATE_PREPARES => false
+                ]
+            );
+        } catch (PDOException $e) {
+            die("Connection failed: " . $e->getMessage());
         }
     }
 } 

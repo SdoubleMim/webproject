@@ -3,7 +3,7 @@
 namespace App\Model;
 
 use PDO;
-use App\Database;
+use App\Database\Database;
 
 class Enrollment
 {
